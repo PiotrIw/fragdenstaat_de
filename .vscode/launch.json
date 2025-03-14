@@ -1,0 +1,43 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: Django",
+            "type": "debugpy",
+            "request": "launch",
+            "args": [
+                "runserver",
+                "0.0.0.0:8000"
+            ],
+            "django": true,
+            "autoStartBrowser": false,
+            "program": "${workspaceFolder}/manage.py"
+        },
+        {
+            "name": "Run pnpm dev",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "pnpm",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "run",
+                "dev",
+                "--host",
+                "0.0.0.0"
+            ],
+            "console": "integratedTerminal"
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Run Django and pnpm dev",
+            "configurations": [
+                "Python Debugger: Django",
+                "Run pnpm dev"
+            ]
+        }
+    ]
+}

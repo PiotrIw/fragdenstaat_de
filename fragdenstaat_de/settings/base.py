@@ -547,7 +547,7 @@ class FragDenStaatBase(German, Base):
 
     ELASTICSEARCH_INDEX_PREFIX = "fragdenstaat_de"
     ELASTICSEARCH_DSL = {
-        "default": {"hosts": "http://localhost:9200"},
+        "default": {"hosts": "http://fragdenstaat_de-elasticsearch-1:9200"},
     }
     ELASTICSEARCH_DSL_SIGNAL_PROCESSOR = "froide.helper.search.CelerySignalProcessor"
 
@@ -559,7 +559,7 @@ class FragDenStaatBase(German, Base):
         "f9211ce7-9924-47da-913f-3070dbd4d298/og-default-sm.png"
     )
     SITE_EMAIL = "info@fragdenstaat.de"
-    SITE_URL = "http://localhost:8000"
+    SITE_URL = "http://192.168.100.122:8000"
 
     SECRET_URLS = {
         "admin": "admin",
