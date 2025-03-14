@@ -18,6 +18,21 @@ class Dev(FragDenStaatBase):
         }
     }
 
+    FRONTEND_SERVER_URL = "http://192.168.100.122:5173/static/"
+
+    # INSTALLED_APPS = list(FragDenStaatBase().INSTALLED_APPS) + [
+    #     'corsheaders',
+    # ]
+
+    # MIDDLEWARE = list(FragDenStaatBase().MIDDLEWARE) + [
+    #     'corsheaders.middleware.CorsMiddleware',
+    # ]
+
+    # CORS_ALLOWED_ORIGINS = [
+    #     "http://0.0.0.0:5173",
+    # ]
+    # CORS_ORIGIN_ALLOW_ALL = True
+
     @property
     def TEMPLATES(self):
         TEMP = super().TEMPLATES

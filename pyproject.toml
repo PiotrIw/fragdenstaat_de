@@ -130,6 +130,7 @@ dev = [
   "ipdb",
   "ipython>=7.31.1,<8",
   "pywatchman",
+  "django-cors-headers",
 ]
 production = [
   "gunicorn",
