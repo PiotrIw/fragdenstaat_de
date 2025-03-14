@@ -2,6 +2,20 @@ export DJANGO_SETTINGS_MODULE=fragdenstaat_de.settings.test
 export DJANGO_CONFIGURATION=Test
 export PYTHONWARNINGS=ignore,default:::fragdenstaat_de
 
+compose_build:
+	docker compose -f compose-dev.yaml build
+
+build: compose_build
+
+start:
+	docker compose -f compose-dev.yaml up -d --remove-orphans
+
+stop:
+	docker compose -f compose-dev.yaml stop
+
+down:
+	docker compose -f compose-dev.yaml down
+
 test:
 	ruff check
 	pytest --reuse-db

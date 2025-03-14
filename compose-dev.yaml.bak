@@ -25,25 +25,7 @@ services:
     ports:
       - '127.0.0.1:9200:9200'
 
-  dev:
-    build: .
-    volumes:
-      - .:/app
-    ports:
-      - "0.0.0.0:8000:8000"  # Expose development server
-      - "0.0.0.0:5173:5173"  # Expose vite frontend server
-    environment:
-      - POSTGRES_USER=fragdenstaat_de
-      - POSTGRES_DB=fragdenstaat_de
-      - POSTGRES_PASSWORD=fragdenstaat_de
-      - VITE_ORIGIN=http://192.168.100.122:5173
-    depends_on:
-      - db
-      - elasticsearch
-    command: bash -c "sleep infinity"
-
 volumes:
   es-data:
   es-logs:
   pg-data:
-

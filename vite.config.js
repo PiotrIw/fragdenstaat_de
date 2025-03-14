@@ -86,9 +86,12 @@ export default defineConfig(({ mode }) => ({
     }
   },
   server: {
+    host: '0.0.0.0',
     port: 5173,
-    origin: 'http://127.0.0.1:5173',
-    fs: { allow: ['..'] }
+    // origin: 'http://192.168.100.122:5173',
+    base: process.env.VITE_ORIGIN || 'http://localhost:5173',
+    fs: { allow: ['..'] },
+    cors: true
   },
   plugins: [
     vue(),
@@ -99,6 +102,11 @@ export default defineConfig(({ mode }) => ({
       })
   ],
   css: {
+    preprocessorOptions: {
+      scss: {
+        additionalData: `$vite-origin: "${process.env.VITE_ORIGIN || 'http://localhost:5173'}";`
+      }
+    },
     devSourcemap: true,
     postcss: {
       plugins: [autoprefixer]

@@ -8,6 +8,7 @@ build/
 public/
 static/
 .idea/
+.pnpm-store/
 fds-env/
 favicon-result.json
 node_modules/
