@@ -11,7 +11,7 @@ class Dev(FragDenStaatBase):
             "ENGINE": "django.contrib.gis.db.backends.postgis",
             "NAME": env("DATABASE_NAME", "fragdenstaat_de"),
             "OPTIONS": {},
-            "HOST": "localhost",
+            "HOST": "fragdenstaat_de-db-1",
             "USER": env("DATABASE_USER", "fragdenstaat_de"),
             "PASSWORD": env("DATABASE_PASSWORD", "fragdenstaat_de"),
             "PORT": "5432",
