@@ -8,6 +8,7 @@ from django.contrib.admin.widgets import ForeignKeyRawIdWidget
 from django.core.mail import mail_managers
 from django.core.validators import MinValueValidator
 from django.utils.html import format_html
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.translation import gettext_lazy as _
 
 from froide_payment.forms import StartPaymentMixin
@@ -81,6 +82,9 @@ class DonationSettingsForm(forms.Form):
     initial_receipt = forms.BooleanField(required=False)
     collapsed = forms.BooleanField(required=False)
 
+    next_url = forms.CharField(required=False)
+    next_label = forms.CharField(required=False)
+
     def clean_amount_presets(self):
         presets = self.cleaned_data["amount_presets"]
         if presets == "-":
@@ -109,6 +113,14 @@ class DonationSettingsForm(forms.Form):
         receipt = self.cleaned_data["initial_receipt"]
         return int(receipt)
 
+    def clean_next_url(self):
+        next_url = self.cleaned_data["next_url"]
+        if url_has_allowed_host_and_scheme(
+            next_url, allowed_hosts=settings.ALLOWED_REDIRECT_HOSTS
+        ):
+            return next_url
+        return ""
+
     def make_donation_form(self, **kwargs):
         d = {}
         if self.is_valid():
@@ -131,6 +143,8 @@ class DonationFormFactory:
         "initial_interval": 0,
         "initial_receipt": "0",
         "collapsed": False,
+        "next_url": "",
+        "next_label": "",
     }
     initials = {
         "initial_amount": "amount",
@@ -347,6 +361,8 @@ class SimpleDonationForm(StartPaymentMixin, forms.Form):
             recurring=order.is_recurring,
             first_recurring=order.is_recurring,
             method=data.get("payment_method", ""),
+            extra_action_url=self.settings.get("next_url", ""),
+            extra_action_label=self.settings.get("next_label", ""),
         )
         return donation
 
@@ -547,7 +563,7 @@ class DonationForm(SpamProtectionMixin, SimpleDonationForm, DonorForm):
                 (0, _("No, thank you.")),
             )
         if self.settings["gift_options"]:
-            gift_options = DonationGift.objects.filter(
+            gift_options = DonationGift.objects.available().filter(
                 id__in=self.settings["gift_options"]
             )
             if gift_options:
@@ -564,10 +580,23 @@ class DonationForm(SpamProtectionMixin, SimpleDonationForm, DonorForm):
                     self.fields["chosen_gift"].initial = gift_options[0].id
                 elif self.settings["default_gift"]:
                     self.fields["chosen_gift"].initial = self.settings["default_gift"]
+            else:
+                self.gift_error_message = _(
+                    "Unfortunately, all available donation gifts have been reserved."
+                )
 
     def clean(self):
         if not self.settings["gift_options"]:
             return
+
+        chosen_gift = self.cleaned_data.get("chosen_gift")
+        if chosen_gift is None:
+            return
+        if not chosen_gift.has_remaining_available_to_order():
+            self.add_error(
+                "chosen_gift",
+                _("The chosen donation gift is no longer available, sorry!"),
+            )
 
         # Check if any address is given
         address_fields = ("address", "postcode", "city", "country")

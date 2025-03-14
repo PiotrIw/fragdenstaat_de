@@ -107,7 +107,7 @@ function setupDonationForm(form: HTMLFormElement): void {
       const nextYear = d.getFullYear() + 1
       const container = document.createElement('small')
       container.classList.add('bg-warning')
-      container.classList.add('ml-2')
+      container.classList.add('ms-2')
       container.innerHTML = `Ihre Spende wird ggf. erst ${nextYear} eingezogen.
       <a href="#" class="text-dark"
         data-bs-toggle="tooltip"
@@ -118,7 +118,7 @@ function setupDonationForm(form: HTMLFormElement): void {
         <span class="fa fa-info-circle"></span>
       </a>
       `
-      const li = ls.parentElement.parentElement
+      const li = ls.parentElement
       li.appendChild(container)
 
       const infoLink = li.querySelector('a')

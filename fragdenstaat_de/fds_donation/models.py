@@ -4,11 +4,13 @@ from urllib.parse import urlencode
 
 from django.conf import settings
 from django.contrib.postgres.fields import HStoreField
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.functions import RowNumber
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.functional import cached_property
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.translation import gettext_lazy as _
 from django.utils.translation import pgettext
 
@@ -360,6 +362,9 @@ class Donation(models.Model):
         choices=DONATION_PROJECTS,
     )
 
+    extra_action_url = models.CharField(max_length=255, blank=True)
+    extra_action_label = models.TextField(blank=True)
+
     objects = DonationManager()
 
     class Meta:
@@ -421,12 +426,35 @@ class DefaultDonation(Donation):
         verbose_name_plural = "FragDenStaat Spenden"
 
 
+class DeferredDonation(Donation):
+    class Meta:
+        proxy = True
+        verbose_name = _("Deferred Donation")
+        verbose_name_plural = _("Deferred Donation")
+
+
+class DonationGiftManager(models.Manager):
+    def available(self):
+        return (
+            super()
+            .get_queryset()
+            .annotate(order_count=models.Count("donationgiftorder"))
+            .filter(
+                models.Q(inventory__isnull=True)
+                | models.Q(inventory__gt=models.F("order_count"))
+            )
+        )
+
+
 class DonationGift(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     category_slug = models.SlugField(max_length=255, blank=True)
+    inventory = models.PositiveIntegerField(blank=True, default=None, null=True)
 
     order = models.PositiveIntegerField(default=0)
+
+    objects = DonationGiftManager()
 
     class Meta:
         verbose_name = _("donation gift")
@@ -438,6 +466,14 @@ class DonationGift(models.Model):
 
     def __str__(self):
         return self.name
+
+    def has_remaining_available_to_order(self) -> bool:
+        if self.inventory is None:
+            return True
+        return (
+            self.inventory
+            - DonationGiftOrder.objects.filter(donation_gift=self).count()
+        ) > 0
 
 
 class DonationGiftOrder(models.Model):
@@ -498,6 +534,13 @@ class DonationGiftFormCMSPlugin(CMSPlugin):
         return str(self.category)
 
 
+def validate_allowed_host_and_scheme(value):
+    if not url_has_allowed_host_and_scheme(
+        value, allowed_hosts=settings.ALLOWED_REDIRECT_HOSTS
+    ):
+        raise ValidationError("Not a valid url")
+
+
 class DonationFormCMSPlugin(CMSPlugin):
     title = models.CharField(max_length=255, blank=True)
     interval = models.CharField(max_length=20, choices=INTERVAL_SETTINGS_CHOICES)
@@ -522,7 +565,10 @@ class DonationFormCMSPlugin(CMSPlugin):
     )
 
     form_action = models.CharField(max_length=255, blank=True)
-    next_url = models.CharField(max_length=255, blank=True)
+    next_url = models.CharField(
+        max_length=255, blank=True, validators=[validate_allowed_host_and_scheme]
+    )
+    next_label = models.CharField(max_length=255, blank=True)
 
     open_in_new_tab = models.BooleanField(default=False)
 
@@ -557,6 +603,8 @@ class DonationFormCMSPlugin(CMSPlugin):
                 "collapsed": self.collapsed,
                 "gift_options": [gift.id for gift in self.gift_options.all()],
                 "default_gift": self.default_gift_id,
+                "next_url": self.next_url,
+                "next_label": self.next_label,
             }
         )
         return form.make_donation_form(**kwargs)

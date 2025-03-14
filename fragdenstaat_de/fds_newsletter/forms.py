@@ -2,11 +2,13 @@ from io import StringIO
 
 from django import forms
 from django.conf import settings
-from django.forms import ModelForm
+from django.forms import ModelForm, ValidationError
 from django.utils.translation import gettext_lazy as _
 
 from froide.helper.spam import SpamProtectionMixin
 from froide.helper.widgets import BootstrapCheckboxSelectMultiple, BootstrapRadioSelect
+
+from fragdenstaat_de.fds_mailing.models import EmailTemplate
 
 from .models import Newsletter, Subscriber, UnsubscribeFeedback
 from .utils import import_csv, subscribe, subscribed_newsletters
@@ -143,11 +145,34 @@ class NewsletterFollowExtra(NewsletterUserExtra):
 
 
 class SubscriberImportForm(forms.Form):
-    csv_file = forms.FileField(label=_("CSV file"))
+    csv_file = forms.FileField(
+        label=_("CSV file"),
+        help_text=_(
+            "Requires an email column. Optionally, name (or first_name, last_name) can be provided."
+        ),
+    )
     reference = forms.CharField(label=_("Import reference label"), required=True)
     email_confirmed = forms.BooleanField(
         label=_("Email addresses are confirmed"), required=False
     )
+
+    def clean_email_confirmed(self):
+        email_confirmed = self.cleaned_data["email_confirmed"]
+
+        if not email_confirmed:
+            try:
+                EmailTemplate.objects.get(
+                    mail_intent="fds_newsletter/email/subscriber_batch_confirm",
+                    active=True,
+                )
+            except (EmailTemplate.DoesNotExist, EmailTemplate.MultipleObjectsReturned):
+                raise ValidationError(
+                    _(
+                        "Make sure there exists one active mailing template for the batch confirm intent (fds_newsletter/email/subscriber_batch_confirm)."
+                    )
+                ) from None
+
+        return email_confirmed
 
     def save(self, newsletter):
         csv_file = self.cleaned_data["csv_file"]

@@ -1,4 +1,4 @@
-{# djlint:off H021 #}
+{# djlint:off #}
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
     <head>
@@ -179,7 +179,7 @@
       }
     }
 
-        </style>
+</style>
         <style type="text/css" media="only screen and (max-width: 600px)">
     @media only screen and (max-width: 600px) {
       body[class*="background"],
@@ -211,7 +211,7 @@
         padding-bottom: 0 !important;
       }
     }
-        </style>
+</style>
     </head>
     <body leftmargin="0"
           marginwidth="0"
@@ -256,7 +256,7 @@
                                         <tr>
                                             <td valign="top" class="footer-cell">
                                                 {% block footer %}
-                                                    {% if newsletter %}
+                                                    {% if newsletter.visible %}
                                                         Wurde die Mail an dich weitergeleitet? Erhalte den nächsten Newsletter persönlich und <a href="https://fragdenstaat.de/newsletter/">abonniere den FragDenStaat-Newsletter direkt hier</a>. Falls dir der Newsletter gefällt, dann  würden wir uns über das Teilen in deinem Netzwerk freuen.
                                                         <br>
                                                         <br>
@@ -278,7 +278,11 @@
                                                     <br>
                                                     {% if unsubscribe_url %}
                                                         <br>
-                                                        Du hast diese Mitteilung erhalten, weil du dich in die Mailingliste eingetragen hast. Du kannst dich <a href="{{ unsubscribe_url }}">hier von dieser Liste abmelden</a>. Weitere Informationen findest du in unserer <a href="https://fragdenstaat.de/datenschutzerklaerung/">Datenschutzrichtlinie</a>.
+                                                        {% if newsletter and not newsletter.visible %}
+                                                          Du kannst dich <a href="{{ unsubscribe_url }}">hier von dieser Liste abmelden</a>. Weitere Informationen findest du in unserer <a href="https://fragdenstaat.de/datenschutzerklaerung/">Datenschutzrichtlinie</a>.
+                                                        {% else %}
+                                                          Du hast diese Mitteilung erhalten, weil du dich in die Mailingliste eingetragen hast. Du kannst dich <a href="{{ unsubscribe_url }}">hier von dieser Liste abmelden</a>. Weitere Informationen findest du in unserer <a href="https://fragdenstaat.de/datenschutzerklaerung/">Datenschutzrichtlinie</a>.
+                                                        {% endif %}
                                                     {% else %}
                                                         <br>
                                                         <a href="https://fragdenstaat.de/datenschutzerklaerung/">Datenschutzerklärung</a>

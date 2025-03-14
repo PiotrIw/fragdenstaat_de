@@ -26,6 +26,10 @@ jobs:
         python-version: ['3.10', '3.12']
     steps:
       - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
       - name: Setup uv
         uses: astral-sh/setup-uv@v2
         with:
@@ -57,11 +61,11 @@ jobs:
       - name: Build frontend
         run: pnpm run build
       - name: Compile translations
-        run: python manage.py compilemessages -i node_modules
+        run: uv run python manage.py compilemessages -i node_modules
       - name: Run tests
         run: |
-          coverage run --branch -m pytest --reuse-db
-          coverage report --format=markdown >> $GITHUB_STEP_SUMMARY
+          uv run coverage run --branch -m pytest --reuse-db
+          uv run coverage report --format=markdown >> $GITHUB_STEP_SUMMARY
         env:
           DATABASE_URL: postgis://postgres:postgres@localhost/fragdenstaat_de
     services:

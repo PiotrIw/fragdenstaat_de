@@ -1,7 +1,4 @@
-from datetime import timedelta
-
 from django.conf import ImproperlyConfigured, settings
-from django.utils import timezone
 
 import dateutil.parser
 import requests
@@ -31,13 +28,13 @@ def get_document_data(paperless_document_id):
     return meta_data, file_data
 
 
-def list_documents():
+def list_documents(page=1):
     client = get_paperless_client()
-    last_week = timezone.now() - timedelta(days=7)
+
     API_URL = (
         settings.PAPERLESS_API_URL
-        + "/documents/?added__date__gt={}&document_type__isnull=1".format(
-            last_week.date()
+        + "/documents/?page={}&page_size=12&ordering=-created&truncate_content=true".format(
+            page
         )
     )
 
@@ -48,9 +45,19 @@ def list_documents():
         document["url"] = get_preview_link(document["id"])
         return document
 
-    data = [map_doc(doc) for doc in data["results"]]
+    return [map_doc(doc) for doc in data["results"]]
 
-    return list(reversed(data))
+
+def get_documents(paperless_document_ids: list[int]):
+    client = get_paperless_client()
+
+    docs = []
+    for paperless_document_id in paperless_document_ids:
+        API_URL = settings.PAPERLESS_API_URL + "/documents/{}/".format(
+            paperless_document_id
+        )
+        docs.append(client.get(API_URL).json())
+    return docs
 
 
 def get_preview_link(paperless_document_id):

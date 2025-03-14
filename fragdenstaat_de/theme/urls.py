@@ -18,9 +18,14 @@ from froide.urls import (
 
 from fragdenstaat_de.fds_blog.sitemaps import BlogSitemap, NewsSitemap
 from fragdenstaat_de.fds_cms.sitemaps import FdsCMSSitemap
+from fragdenstaat_de.fds_cms.views import scannerapp_postupload
 from fragdenstaat_de.fds_newsletter.views import legacy_unsubscribe
 
-from .views import FDSAnnotationView, glyphosat_download, meisterschaften_tippspiel
+from .views import (
+    FDSAnnotationView,
+    glyphosat_download,
+    meisterschaften_tippspiel,
+)
 
 sitemaps["cmspages"] = FdsCMSSitemap
 sitemaps["blog"] = BlogSitemap
@@ -80,6 +85,11 @@ urlpatterns = [
         "tippspiel/",
         meisterschaften_tippspiel,
         name="fragdenstaat-meisterschaften_tippspiel",
+    ),
+    path(
+        "app/scanner/postupload/<slug:message_type>/<int:message_pk>/",
+        scannerapp_postupload,
+        name="fragdenstaat-scannerapp_postupload",
     ),
     path("fcdocs_annotate/", FDSAnnotationView.as_view(), name="annotate-view"),
     path(

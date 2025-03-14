@@ -61,6 +61,7 @@ class FragDenStaatBase(German, Base):
                 "fragdenstaat_de.fds_ogimage.apps.FdsOgImageConfig",
                 "fragdenstaat_de.fds_fximport.apps.FdsFxImportConfig",
                 "fragdenstaat_de.fds_paperless",
+                "fragdenstaat_de.fds_events",
                 # Additional CMS plugins
                 "djangocms_text_ckeditor",
                 "djangocms_picture",
@@ -87,6 +88,7 @@ class FragDenStaatBase(German, Base):
                 # Additional CMS plugins
                 "sortabletable",
                 "contractor",
+                "datashow",
                 "djcelery_email",
                 "django.contrib.redirects",
                 "django_prices",
@@ -106,6 +108,19 @@ class FragDenStaatBase(German, Base):
             ]
         )
         return installed.default
+
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "overwrite": {
+            # Replace in Django 5.1 with allow_overwrite Option
+            "BACKEND": "froide.helper.storage.OverwriteStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
 
     @property
     def TEMPLATES(self):
@@ -752,6 +767,7 @@ class FragDenStaatBase(German, Base):
                     "throttled": "/hilfe/erste-anfrage/wie-viele-anfragen-kann-ich-stellen/",
                     "help_postupload_redaction": "/hilfe/plain/funktionen-der-plattform/schwaerzungen-durchfuehren/",
                 },
+                "mobile_app_content_url": "/app/scanner/postupload/draft/{}/",
                 "bounce_enabled": True,
                 "bounce_max_age": 60 * 60 * 24 * 14,  # 14 days
                 "bounce_format": "bounce+{token}@fragdenstaat.de",
@@ -891,3 +907,5 @@ class FragDenStaatBase(German, Base):
     }
 
     FROIDE_EVIDENCECOLLECTION_GSHEET_IMPORT_CONFIG = values.DictValue()
+
+    DATASHOW_STORAGE_BACKEND = "overwrite"

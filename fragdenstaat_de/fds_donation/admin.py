@@ -19,6 +19,7 @@ from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 
 from adminsortable2.admin import SortableAdminMixin
+from froide_payment.models import PaymentStatus
 
 from froide.helper.admin_utils import (
     ForeignKeyFilter,
@@ -40,6 +41,7 @@ from .export import JZWBExportForm
 from .models import (
     DONATION_PROJECTS,
     DefaultDonation,
+    DeferredDonation,
     Donation,
     DonationGift,
     DonationGiftOrder,
@@ -186,6 +188,7 @@ class DonorAdmin(SetupMailingMixin, admin.ModelAdmin):
         make_nullfilter("user_id", _("has user")),
         ("user", ForeignKeyFilter),
         DonorTagListFilter,
+        ("id", ForeignKeyFilter),
     )
     date_hierarchy = "first_donation"
     search_fields = (
@@ -297,7 +300,8 @@ class DonorAdmin(SetupMailingMixin, admin.ModelAdmin):
     send_donor_optin_email.short_description = _("Send opt-in mail")
 
     def clear_duplicates(self, request, queryset):
-        queryset.update(duplicate=None)
+        # Clear order of queryset to avoid ordering on non-existing annotation columns
+        queryset.order_by().update(duplicate=None)
         self.message_user(request, _("Duplicate flags cleared."))
 
     clear_duplicates.short_description = _("Clear duplicate flag on donors")
@@ -340,13 +344,15 @@ class DonorAdmin(SetupMailingMixin, admin.ModelAdmin):
 
     @admin.action(description=_("Mark invalid addresses"))
     def mark_invalid_addresses(self, request, queryset):
-        queryset.filter(
+        qs = queryset.filter(
             Q(postcode="")
             | Q(address="")
             | Q(city="")
             | Q(last_name="")
             | ~(Q(postcode__regex=r"^\d{5}$") | ~Q(country="DE"))
-        ).update(invalid=True)
+        )
+        # Clear order of queryset to avoid ordering on non-existing annotation columns
+        qs.order_by().update(invalid=True)
 
     def merge_donors(self, request, queryset):
         """
@@ -462,9 +468,9 @@ class DonorAdmin(SetupMailingMixin, admin.ModelAdmin):
             ]
         )
 
-        return _(
-            "Prepared mailing of emailable donors " "with {count} recipients"
-        ).format(count=count)
+        return _("Prepared mailing of emailable donors with {count} recipients").format(
+            count=count
+        )
 
     def export_donor_csv(self, request, queryset):
         def get_donor_row(queryset):
@@ -478,7 +484,7 @@ class DonorAdmin(SetupMailingMixin, admin.ModelAdmin):
                     "postcode": donor.postcode,
                     "location": donor.city,
                     "country": donor.country.name,
-                    "salutation": donor.get_salutation_display(),
+                    "salutation": donor.get_salutation(),
                 }
 
         donor_data = list(get_donor_row(queryset))
@@ -830,9 +836,34 @@ class DonationAdmin(admin.ModelAdmin):
 
 
 class DonationGiftAdmin(SortableAdminMixin, admin.ModelAdmin):
-    list_display = ("name", "category_slug")
+    list_display = (
+        "name",
+        "category_slug",
+        "inventory",
+        "order_count",
+        "remaining_count",
+    )
     list_filter = ("category_slug",)
     search_fields = ("name",)
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.annotate(
+            order_count=Count("donationgiftorder"),
+        )
+
+    def order_count(self, obj):
+        return obj.order_count
+
+    order_count.admin_order_field = "order_count"
+    order_count.short_description = _("order count")
+
+    def remaining_count(self, obj):
+        if obj.inventory is None:
+            return "-"
+        return obj.inventory - obj.order_count
+
+    remaining_count.short_description = _("remaining count")
 
 
 class DonationGiftOrderAdmin(admin.ModelAdmin):
@@ -851,10 +882,11 @@ class DonationGiftOrderAdmin(admin.ModelAdmin):
     list_filter = (
         make_nullfilter("donation__received_timestamp", _("donation received")),
         make_nullfilter("shipped", _("has shipped")),
+        make_daterangefilter("timestamp", _("order timestamp")),
         "donation_gift",
     )
     search_fields = ("email", "donation__donor__email", "donation_gift__name")
-    actions = ["notify_shipped", "export_csv"]
+    actions = ["notify_shipped", "set_shipped", "export_csv"]
 
     def get_queryset(self, request):
         return (
@@ -904,7 +936,19 @@ class DonationGiftOrderAdmin(admin.ModelAdmin):
             level=messages.INFO,
         )
 
-    notify_shipped.short_description = _("notify shipped and set date")
+    notify_shipped.short_description = _("Send shipped email and set date")
+
+    def set_shipped(self, request, queryset):
+        queryset = queryset.filter(shipped=None)
+        count = len(queryset)
+        queryset.update(shipped=timezone.now())
+        self.message_user(
+            request,
+            _("Set {count} order to shipped.").format(count=count),
+            level=messages.INFO,
+        )
+
+    set_shipped.short_description = _("Set shipped date")
 
     def export_csv(self, request, queryset):
         def get_rows(queryset):
@@ -939,3 +983,95 @@ admin.site.register(DonationGift, DonationGiftAdmin)
 admin.site.register(DonationGiftOrder, DonationGiftOrderAdmin)
 admin.site.register(DonorTag, DonorTagAdmin)
 admin.site.register(DefaultDonation, DefaultDonationAdmin)
+
+
+class DeferredDonationAdmin(admin.ModelAdmin):
+    list_display = (
+        "timestamp",
+        "amount",
+        "donor_details",
+        "number",
+        "admin_link_donations",
+        "donor_email_confirmed",
+        "payment_fraud_message",
+        "payment_details",
+        "project",
+        "purpose",
+        "method",
+        "reference",
+        "keyword",
+    )
+    raw_id_fields = ("donor", "order", "payment")
+
+    actions = ["confirm", "cancel"]
+
+    def get_queryset(self, request):
+        return (
+            super()
+            .get_queryset(request)
+            .filter(payment__status=PaymentStatus.DEFERRED)
+            .select_related("payment", "donor")
+        )
+
+    def admin_link_donations(self, obj):
+        return format_html(
+            '<a href="{}">{}</a>',
+            reverse("admin:fds_donation_donation_changelist")
+            + ("?donor=%s" % obj.donor_id),
+            _("donations"),
+        )
+
+    admin_link_donations.short_description = _("donations")
+
+    def donor_details(self, obj):
+        return str(obj.donor)
+
+    donor_details.short_description = _("Donor")
+    donor_details.admin_order_field = Concat(
+        "donor__first_name", Value(" "), "donor__last_name"
+    )
+
+    def donor_email_confirmed(self, obj):
+        return obj.donor.email_confirmed
+
+    donor_email_confirmed.short_description = _("Email confirmed")
+
+    def payment_fraud_message(self, obj):
+        return obj.payment.fraud_message
+
+    payment_fraud_message.short_description = _("Suspicious")
+
+    def payment_fraud_message(self, obj):
+        return obj.payment.fraud_message
+
+    payment_fraud_message.short_description = _("Suspicious")
+
+    def payment_details(self, obj):
+        try:
+            iban = obj.payment.attrs.iban
+        except AttributeError:
+            iban = "n/a"
+        iban = iban[:4]
+        return "IBAN[4]: {iban}, IP: {ip}".format(
+            iban=iban,
+            ip=obj.payment.customer_ip_address,
+        )
+
+    payment_details.short_description = _("Payment details")
+
+    @admin.action(description=_("✅ Confirm donations"))
+    def confirm(self, request, queryset):
+        for donation in queryset:
+            obj = donation.payment
+            provider = obj.get_provider()
+            provider.confirm_payment(obj)
+
+    @admin.action(description=_("❌ Cancel donations"))
+    def cancel(self, request, queryset):
+        for donation in queryset:
+            obj = donation.payment
+            provider = obj.get_provider()
+            provider.cancel_payment(obj)
+
+
+admin.site.register(DeferredDonation, DeferredDonationAdmin)
