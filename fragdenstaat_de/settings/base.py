@@ -28,6 +28,7 @@ class FragDenStaatBase(German, Base):
     LANGUAGES = (
         ("de", _("German")),
         ("en", _("English")),
+        ("pl", _("Polish")),
     )
 
     @property

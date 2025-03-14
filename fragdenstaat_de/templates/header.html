@@ -32,7 +32,7 @@
                 {% page_url "home" as home_url %}
                 <li class="order-lg-first nav-logo">
                     <a href="{{ home_url|default:'/' }}">
-                        {% render_svg "img/header_logo.svg" %}
+                        <img src="{% static 'img/so_header_logo.png' %}" alt="{{ SITE_NAME }}" />
                         <span class="visually-hidden">{{ SITE_NAME }}</span>
                     </a>
                 </li>
@@ -86,7 +86,7 @@
                                     <a class="dropdown-item" href="{{ requests_url }}">{% blocktrans %}See requests{% endblocktrans %}</a>
                                 </li>
                                 <li>
-                                    <a class="dropdown-item" href="{% url 'foirequest-make_request' %}">{% blocktrans %}Make request{% endblocktrans %}</a>
+                                    <a class="dropdown-item" href="{% url 'foirequest-make_request' %}">{% blocktrans %}Make HHH request{% endblocktrans %}</a>
                                 </li>
                                 {% page_url "beginnersguide" as beginners_url %}
                                 {% if beginners_url %}
